@@ -12,15 +12,8 @@ class CorpusProcessor(WordToVec):
         self.text_corpus = []
         self.vector_dim = 300  # TODO: find a way to calculate this on the fly
 
-    def build_vocabulary(self, corpus, y=None, clean_corpus: bool = False):
-        if clean_corpus:
-            corpus = [
-                token
-                for doc in corpus
-                for tokens in self.clean_text(doc, return_tokens=True)
-                for token in tokens
-            ]
-        super(CorpusProcessor, self).build_vocabulary(corpus, y=y)
+    def clean_corpus(self, corpus, *args, **kwargs):
+        return [self.clean_text(doc, *args, **kwargs) for doc in corpus]
 
     def tokenize_corpus(self, corpus=None):
         data = corpus if corpus is not None else self.text_corpus
@@ -28,7 +21,6 @@ class CorpusProcessor(WordToVec):
         return (doc.split(" ") for doc in data)
 
     def tokens_to_index(self, corpus):
-        # Returns None when token not in vocabulary
         index_values = [[self.vocabulary[token] for token in sentence] for sentence in corpus]
         return index_values
 

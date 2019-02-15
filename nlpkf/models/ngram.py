@@ -1,3 +1,4 @@
+from typing import Callable
 import torch
 from tqdm import tqdm
 import numpy as np
@@ -8,7 +9,7 @@ from nlpkf.preprocessing.corpus import CorpusProcessor
 
 
 class NGramLanguageModeler(nn.Module):
-    def __init__(self, vocab_size, embedding_dim, context_size, hidden_size: int):
+    def __init__(self, vocab_size: int, embedding_dim: int, context_size: int, hidden_size: int):
         super(NGramLanguageModeler, self).__init__()
         self.embeddings = nn.Embedding(vocab_size, embedding_dim)
         self.linear1 = nn.Linear(context_size * embedding_dim, hidden_size)
@@ -45,9 +46,12 @@ class NgramModel:
     def array_to_words(self, data):
         return self._array_to_words(data)
 
-    def build_model_from_corpus(self, corpus, y=None, clean_corpus: bool = True):
-        clean_corpus = self.dataproc.build_vocabulary(corpus, y=y, clean_corpus=clean_corpus)
+    def build_vocabulary(self, corpus, *args, **kwargs):
+        self.dataproc.build_vocabulary(corpus, *args, **kwargs)
         self.vocab_size = self.dataproc.vocab_size
+
+    def init_model(self):
+
         self.embedding_dim = len(self.dataproc.to_vector(0))
         self.model = NGramLanguageModeler(
             vocab_size=self.vocab_size,
@@ -59,11 +63,9 @@ class NgramModel:
         self.optimizer = optimizer(self.model.parameters())
         if self.load_embedding:
             self.model.embeddings = self.dataproc.to_pytorch_embedding(pretrained=True)
-        return clean_corpus
 
-    def corpus_to_dataset(self, corpus, clean_corpus: bool = False) -> tuple:
-        clean_corpus = self.build_model_from_corpus(corpus, clean_corpus=clean_corpus)
-        tokens = self.dataproc.tokenize_corpus(clean_corpus)
+    def corpus_to_dataset(self, corpus) -> tuple:
+        tokens = self.dataproc.tokenize_corpus(corpus=corpus)
         indexes = self.dataproc.tokens_to_index(tokens)
         ngram_ix = self.dataproc.to_ngrams(indexes, self.context_size + 1)
         dataset = np.array(
@@ -72,8 +74,7 @@ class NgramModel:
         X, y = dataset[:, :-1], dataset[:, -1]
         return X, y
 
-    def fit(self, corpus, clean_corpus: bool = True, n_epochs: int = 10):
-        X, y = self.corpus_to_dataset(corpus, clean_corpus=clean_corpus)
+    def train(self, X, y, n_epochs: int = 1):
         losses = []
         loss_function = nn.NLLLoss()
         for epoch in tqdm(range(n_epochs)):
@@ -103,6 +104,13 @@ class NgramModel:
                 # Get the Python number from a 1-element Tensor by calling tensor.item()
                 total_loss += loss.item()
             losses.append(total_loss)
+        return losses
+
+    def fit(self, corpus, n_epochs: int = 10):
+        self.build_vocabulary(corpus=corpus)
+        self.init_model()
+        X, y = self.corpus_to_dataset(corpus)
+        losses = self.train(X=X, y=y, n_epochs=n_epochs)
         return X, y, losses
 
     def predict(self, text, return_dataset: bool = False):
