@@ -5,7 +5,7 @@ from gensim.corpora import Dictionary
 from gensim.matutils import sparse2full
 from sklearn.base import TransformerMixin, BaseEstimator
 from sklearn.feature_extraction.text import CountVectorizer
-from nlpkf.tokenizer import Tokenizer, clean_text
+from nlpkf.preprocessing.tokenizer import Tokenizer, clean_text
 
 
 def create_word_vectorizer(tokenizer_kwargs, return_tokenizer: bool = False, *args, **kwargs):
@@ -86,7 +86,11 @@ class WordToVec:
         vectorizer_kwargs = {} if vectorizer_kwargs is None else vectorizer_kwargs
 
         tokenizer_kwargs["model"] = model
-        self.tokenizer = tokenizer(**tokenizer_kwargs)
+        self.tokenizer = (
+            tokenizer(**tokenizer_kwargs) if not isinstance(tokenizer, Tokenizer) else tokenizer
+        )
+        lower_vect = vectorizer_kwargs.get("lowercase", False)
+        vectorizer_kwargs["lowercase"] = lower_vect
         self.vectorizer = CountVectorizer(
             tokenizer=self.tokenizer.tokenize_text, **vectorizer_kwargs
         )
@@ -149,7 +153,6 @@ class WordToVec:
             self._idx2word[i] = word
             self._idx2vec[i] = vector
             self._word2vec[word] = vector
-        return self
 
     def to_onehot(self, X):
         self.vectorizer.binary = True
@@ -170,27 +173,3 @@ class WordToVec:
     def to_seq_vectors(self, X, clean_text: bool = False):
         text = self.clean_text(X, return_tokens=False) if clean_text else X
         return [self.nlp(x).vector for x in text]
-
-    def to_pytorch_embedding(self, pretrained: bool = True, vector_size: int = None):
-        import torch
-        import torch.nn as nn
-
-        if self.idx2vec.get(0) is None and pretrained:
-            raise ValueError("The vector dictionary needs to be initialize. Call fit() first.")
-        elif not pretrained and vector_size is None:
-            raise ValueError(
-                "You need to specify an embedding size when not using pretrained weights."
-            )
-
-        vector_size = len(self.idx2vec[0]) if pretrained else vector_size
-        embed = nn.Embedding(self.vocab_size, vector_size)
-
-        if pretrained:
-            # intialize the word vectors, pretrained_weights is a
-            # numpy array of size (vocab_size, vector_size) and
-            # pretrained_weights[i] retrieves the word vector of
-            # i-th word in the vocabulary
-            pretrained_weights = np.array([self.idx2vec[i] for i in range(self.vocab_size)])
-            embed.weight.data.copy_(torch.from_numpy(pretrained_weights))
-
-        return embed

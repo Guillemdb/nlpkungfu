@@ -3,7 +3,7 @@ import nltk
 import spacy
 from typing import Callable
 from nltk.corpus import stopwords
-from nlpkf.utils import STOPWORDS_NLTK, STOPWORDS_SPACY
+from nlpkf.utils import STOPWORDS_NLTK, STOPWORDS_SPACY, EOS_TOKEN, SOS_TOKEN, normalize_string
 
 
 def clean_text(
@@ -28,9 +28,11 @@ class BaseTokenizer:
         remove_nums: bool = False,
         to_lowercase: bool = False,
         language="english",
+        normalize_strings: bool = False,
         *args,
         **kwargs,
     ):
+        self.normalize_strings = normalize_strings
         self.use_stems = use_stems
         self.remove_stopwords = remove_stopwords
         self.remove_nums = remove_nums
@@ -42,6 +44,7 @@ class BaseTokenizer:
         self.lemma = lemma_func
         self.word_tokenize = word_tokenize
         self.stop_words = stop_words if stop_words is not None else []
+        self.special_tokens = set((str(SOS_TOKEN), str(EOS_TOKEN)))
 
     def is_punctuation(self, word):
         return word in string.punctuation
@@ -52,24 +55,40 @@ class BaseTokenizer:
     def is_number(self, word):
         return False
 
+    def is_special_token(self, word):
+        return str(word).upper() in self.special_tokens
+
     def tokenize_text(self, text):
 
         text = text.lower() if self.to_lowercase else text
+        # if self.nomalize_string:
+        #    text = normalize_string(text)
 
-        for token in self.word_tokenize(text):
-            if self.remove_punctuation and self.is_punctuation(token):
+        for i, token in enumerate(self.word_tokenize(text)):
+            # Special tokens are not processed
+            if self.is_special_token(token):
+                yield str(token).upper()
                 continue
-            elif self.remove_stopwords and self.is_stop_word(token):
+            # Filter tokens
+            is_punct = self.remove_punctuation and self.is_punctuation(token)
+            is_blank = len(str(token).strip()) == 0
+            is_stop = self.remove_stopwords and self.is_stop_word(token)
+            is_num = self.remove_nums and self.is_number(token)
+            if is_blank or is_punct or is_stop or is_punct or is_num:
                 continue
-            elif self.remove_nums and self.is_number(token):
-                continue
-
+            # Perform lemmatization and stemming
             if self.use_lemma and self.lemma is not None:
-                yield self.lemma(token)
+                val = self.lemma(token)
             elif self.use_stems:
-                yield self.stem(token)
+                val = self.stem(token)
             else:
-                yield str(token)
+                val = token
+            # Discard empty strings after normalizing
+            val = str(val) if not self.normalize_strings else normalize_string(str(val))
+            val = val.strip()
+            if len(val) == 0:
+                continue
+            yield val
 
     def fit_transform(self, data, return_tokens: bool = True):
         corpus = self.data_as_corpus(data)
@@ -169,6 +188,10 @@ class TokenizerSpacy(BaseTokenizer):
     def is_number(self, word):
         return word.is_digit
 
+    def is_special_token(self, word):
+        val = str(word).upper() in self.special_tokens
+        return val
+
 
 class Tokenizer(BaseTokenizer):
     def __init__(
@@ -234,6 +257,13 @@ class Tokenizer(BaseTokenizer):
             else self.nltk.is_number(token)
         )
 
+    def is_special_token(self, token):
+        return (
+            self.spacy.is_special_token(token)
+            if self.word_tokenize_mode == "spacy"
+            else self.nltk.is_special_token(token)
+        )
+
 
 class TopicTokenizer(Tokenizer):
     def __init__(
@@ -280,7 +310,11 @@ class TopicTokenizer(Tokenizer):
         text = text.lower() if self.to_lowercase else text
 
         for token in self.word_tokenize(text):
-            if self.remove_punctuation and self.is_punctuation(token):
+            if self.is_special_token(token):
+                yield str(token).upper()
+            elif len(str(token).strip()) == 0:
+                continue
+            elif self.remove_punctuation and self.is_punctuation(token):
                 continue
             elif self.remove_stopwords and self.is_stop_word(token):
                 continue

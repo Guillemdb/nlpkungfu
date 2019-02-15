@@ -1,3 +1,40 @@
+import unicodedata
+import re
+import math
+import time
+import torch
+
+
+SOS_TOKEN = "/SOS"
+EOS_TOKEN = "/EOS"
+
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+
+def unicode_to_ascii(s):
+    return "".join(c for c in unicodedata.normalize("NFD", s) if unicodedata.category(c) != "Mn")
+
+
+def normalize_string(s):
+    s = unicode_to_ascii(s.lower().strip())
+    s = re.sub(r"([.!?])", r" \1", s)
+    s = re.sub(r"[^a-zA-Z.!?]+", r" ", s)
+    return s
+
+
+def as_minutes(s):
+    m = math.floor(s / 60)
+    s -= m * 60
+    return "%dm %ds" % (m, s)
+
+
+def time_since(since, percent):
+    now = time.time()
+    s = now - since
+    es = s / (percent)
+    rs = es - s
+    return "Elapsed %s - left %s" % (as_minutes(s), as_minutes(rs))
+
 
 STOPWORDS_SPACY = [
     "top",

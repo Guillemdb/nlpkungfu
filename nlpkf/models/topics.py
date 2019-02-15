@@ -1,15 +1,15 @@
 from typing import Callable
-from nlpkf.data_processing import DataProcessor
-from nlpkf.tokenizer import TopicTokenizer
-from sklearn.decomposition import NMF, LatentDirichletAllocation, TruncatedSVD
+from nlpkf.preprocessing.corpus import CorpusProcessor
+from nlpkf.preprocessing.tokenizer import TopicTokenizer
+from sklearn.decomposition import LatentDirichletAllocation
 
 
-class TopicAnalizer(DataProcessor):
+class TopicAnalizer(CorpusProcessor):
     def __init__(
         self,
         n_components,
-        model: Callable=LatentDirichletAllocation,
-        tokenizer: Callable=TopicTokenizer,
+        model: Callable = LatentDirichletAllocation,
+        tokenizer: Callable = TopicTokenizer,
         model_params=None,
         *args,
         **kwargs
@@ -18,8 +18,8 @@ class TopicAnalizer(DataProcessor):
         super(TopicAnalizer, self).__init__(tokenizer=tokenizer, *args, **kwargs)
         self.model = model(n_components=n_components, **model_params)
 
-    def fit(self, X, y=None):
-        clean_corpus = self.build_vocabulary(X, y=y)
+    def fit(self, X, y=None, *args, **kwargs):
+        clean_corpus = self.build_vocabulary(X, y=y, *args, **kwargs)
         dataset = self.vectorizer.fit_transform(clean_corpus)
         preds = self.model.fit_transform(dataset)
         return preds

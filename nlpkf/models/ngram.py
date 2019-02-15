@@ -4,7 +4,7 @@ import numpy as np
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-from nlpkf.data_processing import DataProcessor
+from nlpkf.preprocessing.corpus import CorpusProcessor
 
 
 class NGramLanguageModeler(nn.Module):
@@ -25,7 +25,7 @@ class NGramLanguageModeler(nn.Module):
 class NgramModel:
     def __init__(
         self,
-        dataproc: DataProcessor,
+        dataproc: CorpusProcessor,
         context_size: int,
         embedding_dim=None,
         load_embedding: bool = True,
