@@ -18,9 +18,12 @@ class TopicAnalizer(CorpusProcessor):
         super(TopicAnalizer, self).__init__(tokenizer=tokenizer, *args, **kwargs)
         self.model = model(n_components=n_components, **model_params)
 
+    def corpus_to_dataset(self, corpus, *args, **kwargs):
+        return self.vectorizer.transform(corpus)
+
     def fit(self, corpus, y=None):
         self.build_vocabulary(corpus, y=y)
-        dataset = self.vectorizer.transform(corpus)
+        dataset = self.corpus_to_dataset(corpus=corpus)
         preds = self.model.fit_transform(dataset)
         return preds
 
