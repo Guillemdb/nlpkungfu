@@ -26,14 +26,24 @@ class NGramLanguageModeler(nn.Module):
 class NgramModel:
     def __init__(
         self,
-        dataproc: CorpusProcessor,
         context_size: int,
+        dataproc: Callable=CorpusProcessor,
         embedding_dim=None,
         load_embedding: bool = True,
         optimizer=None,
         hidden_size: int = 128,
+        *args, **kwargs
     ):
-        self.dataproc = dataproc
+        """
+        Args:
+            context_size:
+            dataproc:
+            embedding_dim:
+            load_embedding:
+            optimizer:
+            hidden_size:
+        """
+        self.dataproc = dataproc(*args, **kwargs)
         self.vocab_size = self.dataproc.vocab_size
         self.embedding_dim = embedding_dim if embedding_dim is not None else dataproc.vector_dim
         self.load_embedding = load_embedding
