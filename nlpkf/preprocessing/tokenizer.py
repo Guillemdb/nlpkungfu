@@ -61,9 +61,6 @@ class BaseTokenizer:
     def tokenize_text(self, text):
 
         text = text.lower() if self.to_lowercase else text
-        # if self.nomalize_string:
-        #    text = normalize_string(text)
-
         for i, token in enumerate(self.word_tokenize(text)):
             # Special tokens are not processed
             if self.is_special_token(token):
@@ -193,13 +190,14 @@ class TokenizerSpacy(BaseTokenizer):
         return val
 
 
-class Tokenizer(BaseTokenizer):
+class DualTokenizer(BaseTokenizer):
     def __init__(
         self,
         mode: str = "Spacy",
         tokenize_mode: str = None,
         stop_words_mode: str = None,
         lemma_mode: str = None,
+        stop_words: [list, set] = None,
         *args,
         **kwargs,
     ):
@@ -218,11 +216,14 @@ class Tokenizer(BaseTokenizer):
             if word_tok_mode.lower() == "spacy"
             else self.nltk.word_tokenize
         )
-
-        stop_words_mode = mode.lower() if stop_words_mode is None else stop_words_mode.lower()
-        stop_words = (
-            self.spacy.stop_words if stop_words_mode.lower() == "spacy" else self.nltk.stop_words
-        )
+        # External stopwords override predefined
+        if stop_words is None:
+            stop_words_mode = mode.lower() if stop_words_mode is None else stop_words_mode.lower()
+            stop_words = (
+                self.spacy.stop_words
+                if stop_words_mode.lower() == "spacy"
+                else self.nltk.stop_words
+            )
 
         lemma_mode = mode.lower() if lemma_mode is None else lemma_mode.lower()
         lemma_func = self.spacy.lemma if lemma_mode.lower() == "spacy" else self.nltk.lemma
@@ -234,7 +235,7 @@ class Tokenizer(BaseTokenizer):
             "lemma_func": lemma_func,
         }
         proc_kwargs.update(kwargs)
-        super(Tokenizer, self).__init__(*args, **proc_kwargs)
+        super(DualTokenizer, self).__init__(*args, **proc_kwargs)
 
     def is_punctuation(self, token):
         return (
@@ -265,7 +266,7 @@ class Tokenizer(BaseTokenizer):
         )
 
 
-class TopicTokenizer(Tokenizer):
+class Tokenizer(DualTokenizer):
     def __init__(
         self,
         filter_pos: [list, bool] = True,
@@ -283,7 +284,7 @@ class TopicTokenizer(Tokenizer):
         stop_words = stop_words if stop_words is not None else []
         stop_words = list(STOPWORDS_NLTK) + list(STOPWORDS_SPACY) + stop_words
         stop_words = set(stop_words)
-        super(TopicTokenizer, self).__init__(
+        super(Tokenizer, self).__init__(
             use_stems=use_stems,
             stop_words=stop_words,
             remove_stopwords=remove_stopwords,
@@ -308,26 +309,32 @@ class TopicTokenizer(Tokenizer):
     def tokenize_text(self, text):
 
         text = text.lower() if self.to_lowercase else text
-
-        for token in self.word_tokenize(text):
+        for i, token in enumerate(self.word_tokenize(text)):
+            # Special tokens are not processed
             if self.is_special_token(token):
                 yield str(token).upper()
-            elif len(str(token).strip()) == 0:
                 continue
-            elif self.remove_punctuation and self.is_punctuation(token):
+            # Filter tokens
+            is_punct = self.remove_punctuation and self.is_punctuation(token)
+            is_blank = len(str(token).strip()) == 0
+            is_stop = self.remove_stopwords and self.is_stop_word(token)
+            is_num = self.remove_nums and self.is_number(token)
+            not_pos = self.filter_pos and self.discard_by_pos(token)
+            if is_blank or is_punct or is_stop or is_punct or is_num or not_pos:
                 continue
-            elif self.remove_stopwords and self.is_stop_word(token):
-                continue
-            elif self.remove_nums and self.is_number(token):
-                continue
-            elif self.filter_pos and self.discard_by_pos(token):
-                continue
+            # Perform lemmatization and stemming
             if self.use_lemma and self.lemma is not None:
-                yield self.lemma(token)
+                val = self.lemma(token)
             elif self.use_stems:
-                yield self.stem(token)
+                val = self.stem(token)
             else:
-                yield str(token)
+                val = token
+            # Discard empty strings after normalizing
+            val = str(val) if not self.normalize_strings else normalize_string(str(val))
+            val = val.strip()
+            if len(val) == 0:
+                continue
+            yield val
 
     def discard_by_pos(self, token):
         return token.pos_ not in self.valid_pos
