@@ -131,7 +131,7 @@ class NgramModel:
         print("Building vocabulary.")
         self.build_vocabulary(corpus=corpus)
         self.init_model()
-        print("Preprocessing Dataset.")
+        print("Preprocessing dataset.")
         X, y = self.corpus_to_dataset(corpus)
         print("Training.")
         losses = self.train(X=X, y=y, n_epochs=n_epochs)
@@ -148,4 +148,15 @@ class NgramModel:
             self.model(torch.tensor([x], dtype=torch.long, device=device)).argmax(1).item()
             for x in dataset
         ]
-        return preds, dataset if return_dataset else preds
+
+        return (preds, dataset) if return_dataset else preds
+
+    def evaluate_pred(self, text: str):
+        preds, data = self.predict(text, return_dataset=True)
+        preds = self.array_to_words(preds)
+        data = self.array_to_words(data)
+        text = "{}\n".format(text)
+        text += "   In   |   Pred   \n"
+        for d, p in zip(data, preds):
+            text += " {} | {}\n".format(" ".join(d), p)
+        print(text)
