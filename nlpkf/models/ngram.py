@@ -6,6 +6,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 from nlpkf.preprocessing.corpus import CorpusProcessor
+from nlpkf.utils import device
 
 
 class NGramLanguageModeler(nn.Module):
@@ -14,6 +15,7 @@ class NGramLanguageModeler(nn.Module):
         self.embeddings = nn.Embedding(vocab_size, embedding_dim)
         self.linear1 = nn.Linear(context_size * embedding_dim, hidden_size)
         self.linear2 = nn.Linear(hidden_size, vocab_size)
+        self.to(device)
 
     def forward(self, inputs):
         embeds = self.embeddings(inputs).view((1, -1))
@@ -24,15 +26,22 @@ class NGramLanguageModeler(nn.Module):
 
 
 class NgramModel:
+    """The NgramModel learns the next element of an n-gram sequence. It uses a
+    NGramLanguageModeler to predict the next word of a sequence, and it
+    incorporates all the logic needed to process raw text.
+
+    """
+
     def __init__(
         self,
         context_size: int,
-        dataproc: Callable=CorpusProcessor,
+        dataproc: Callable = CorpusProcessor,
         embedding_dim=None,
         load_embedding: bool = True,
         optimizer=None,
         hidden_size: int = 128,
-        *args, **kwargs
+        *args,
+        **kwargs
     ):
         """
         Args:
@@ -72,7 +81,7 @@ class NgramModel:
         optimizer = lambda x: optim.SGD(x, lr=0.001) if self.optimizer is None else self.optimizer
         self.optimizer = optimizer(self.model.parameters())
         if self.load_embedding:
-            self.model.embeddings = self.dataproc.to_pytorch_embedding(pretrained=True)
+            self.model.embeddings, _ = self.dataproc.to_pytorch_embedding(pretrained=True)
 
     def corpus_to_dataset(self, corpus) -> tuple:
         tokens = self.dataproc.tokenize_corpus(corpus=corpus)
@@ -92,7 +101,7 @@ class NgramModel:
             for context, target in zip(X, y):
                 # Step 1. Prepare the inputs to be passed to the model (i.e, turn the words
                 # into integer indices and wrap them in tensors)
-                context_idxs = torch.tensor([context], dtype=torch.long)
+                context_idxs = torch.tensor([context], dtype=torch.long, device=device)
 
                 # Step 2. Recall that torch *accumulates* gradients. Before passing in a
                 # new instance, you need to zero out the gradients from the old
@@ -105,7 +114,9 @@ class NgramModel:
 
                 # Step 4. Compute your loss function. (Again, Torch wants the target
                 # word wrapped in a tensor)
-                loss = loss_function(log_probs, torch.tensor([target], dtype=torch.long))
+                loss = loss_function(
+                    log_probs, torch.tensor([target], dtype=torch.long, device=device)
+                )
 
                 # Step 5. Do the backward pass and update the gradient
                 loss.backward()
@@ -117,9 +128,12 @@ class NgramModel:
         return losses
 
     def fit(self, corpus, n_epochs: int = 10):
+        print("Building vocabulary.")
         self.build_vocabulary(corpus=corpus)
         self.init_model()
+        print("Preprocessing Dataset.")
         X, y = self.corpus_to_dataset(corpus)
+        print("Training.")
         losses = self.train(X=X, y=y, n_epochs=n_epochs)
         return X, y, losses
 
@@ -130,5 +144,8 @@ class NgramModel:
         dataset = np.array(
             [list(seq) for sentence in ngram_ix for seq in sentence], dtype=np.int64
         )
-        preds = [self.model(torch.tensor([x], dtype=torch.long)).argmax(1).item() for x in dataset]
+        preds = [
+            self.model(torch.tensor([x], dtype=torch.long, device=device)).argmax(1).item()
+            for x in dataset
+        ]
         return preds, dataset if return_dataset else preds
