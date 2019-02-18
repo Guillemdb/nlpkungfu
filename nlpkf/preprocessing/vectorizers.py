@@ -1,6 +1,6 @@
 import os
 import numpy as np
-from typing import Callable
+from typing import Callable, List
 from gensim.corpora import Dictionary
 from gensim.matutils import sparse2full
 from sklearn.base import TransformerMixin, BaseEstimator
@@ -75,6 +75,16 @@ class OneHotGensim(BaseEstimator, TransformerMixin):
 
 
 class WordToVec:
+    """The WordToVec includes everything you need to transform raw text into
+    vector representations suitable for using with different machine learning
+    models.
+
+    It uses a Tokenizer to preprocess the raw text, and an sklearn CountVectorizer
+    to build the vocabulary and process the text input.
+
+    This class keeps track of the vocabulary, the mapping between words, indexes,
+    and the vector representations offered by spacy.
+    """
     def __init__(
         self,
         model: str = "en_core_web_md",
@@ -101,36 +111,53 @@ class WordToVec:
 
     @property
     def vocabulary(self):
+        """Access the vocabulary dictionary containing the mapping of the
+        vocabulary words to its respective indexes.
+        """
         try:
             return self.vectorizer.vocabulary_
         except Exception as e:
             return {}
 
     @property
-    def idx2vec(self):
+    def idx2vec(self) -> dict:
+        """Access the  dictionary containing the mapping of the
+        word indexes to its respective vector representations.
+        """
         return self._idx2vec
 
     @property
-    def idx2word(self):
+    def idx2word(self) -> dict:
+        """Access the  dictionary containing the mapping of the
+        word indexes to its respective word representations.
+        """
         return self._idx2word
 
     @property
-    def word2vec(self):
+    def word2vec(self) -> dict:
+        """Access the  dictionary containing the mapping of the
+        word indexes to its respective vector representations.
+        """
         return self._word2vec
 
     @property
-    def vocab_size(self):
+    def vocab_size(self) -> int:
+        """Returns the size of the vocabulary."""
         return len(self.vocabulary)
 
     def to_vector(self, val: [str, int]) -> np.ndarray:
+        """Map and integer representing a word index or a string representing a
+        word to its respective vector representation.
+        """
         if isinstance(val, int):
             val = self.idx2word[val]
         mem = self.word2vec.get(val)
         if mem is not None:
             return mem
-        return self.nlp.vocab[val]
+        return self.nlp.vocab[val].vector
 
     def add_to_vocab(self, word):
+        """Add a word to the current vocabulary."""
         ix = self.vocab_size + 1
         vector = self.to_vector(word)
         self.vocabulary[ix] = word
@@ -138,13 +165,31 @@ class WordToVec:
         self.word2vec[ix] = vector
         self.idx2vec[ix] = vector
 
-    def clean_text(self, text, return_tokens: bool = False) -> [str, list]:
+    def clean_text(self, text: str, return_tokens: bool = False) -> [str, List[str]]:
+        """
+        Use the Tokenizer to clean a string.
+        Args:
+            text: String to be cleaned
+            return_tokens: Whether to return the result as a list of tokens or as
+                an string.
+
+        Returns:
+            Cleaned text either as a string or as a list of tokens.
+
+        """
         cleaned = self.tokenizer.fit_transform(text, return_tokens=return_tokens)
         return cleaned[0] if isinstance(text, str) else cleaned
 
-    def build_vocabulary(self, X, y=None):
+    def build_vocabulary(self, X: List[str], y=None):
         """
-        Learn how to transform data based on input data, X.
+        Fit the Vectorizer to build the vocabulary on a given corpus, and update
+        the mapping dictionaries accordingly.
+        Args:
+            X: Corpus of raw text as a list of strings.
+            y: Not used. Implemented to match sklearn interface.
+
+        Returns:
+            None
         """
 
         self.vectorizer.fit(X)
@@ -154,15 +199,42 @@ class WordToVec:
             self._idx2vec[i] = vector
             self._word2vec[word] = vector
 
-    def to_onehot(self, X):
+    def to_onehot(self, X: List[str]) -> np.ndarray:
+        """
+        Transform a given corpus to its one hot encoded vector representation.
+        Args:
+            X: Corpus to be transformed
+
+        Returns:
+            One hot representation of the corpus.
+
+        """
         self.vectorizer.binary = True
         return self.vectorizer.transform(X)
 
-    def to_freq_counts(self, X):
+    def to_freq_counts(self, X: List[str]):
+        """
+        Transform a given corpus to its word frequency counts representation.
+        Args:
+            X: Corpus to be transformed
+
+        Returns:
+            Bag of words representation of the corpus.
+
+        """
         self.vectorizer.binary = False
         return self.vectorizer.transform(X)
 
-    def to_word_vectors(self, X, clean_text: bool = False):
+    def to_word_vectors(self, X: List[str], clean_text: bool = False) -> list:
+        """
+        Transform a given corpus to its word vector representation.
+        Args:
+            X: Corpus to be transformed
+
+        Returns:
+            Word vector representation of the corpus.
+
+        """
         word_seqs = []
         for text in X:
             tokens = self.clean_text(text, return_tokens=True) if clean_text else text
@@ -170,6 +242,16 @@ class WordToVec:
             word_seqs.append(np.array(vecs))
         return word_seqs
 
-    def to_seq_vectors(self, X, clean_text: bool = False):
+    def to_seq_vectors(self, X: List[str], clean_text: bool = False):
+        """
+        Transform a corpus to a document vector representation, where each document
+        is represented by a dense vector.
+        Args:
+            X: List of documents to be transformed
+            clean_text:
+
+        Returns:
+
+        """
         text = self.clean_text(X, return_tokens=False) if clean_text else X
         return [self.nlp(x).vector for x in text]
