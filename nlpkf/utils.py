@@ -10,6 +10,11 @@ EOS_TOKEN = "/EOS"
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+def enable_notebook_visualization():
+    from bokeh.io import output_notebook
+    import pyLDAvis
+    output_notebook()
+    pyLDAvis.enable_notebook()
 
 def unicode_to_ascii(s):
     return "".join(c for c in unicodedata.normalize("NFD", s) if unicodedata.category(c) != "Mn")
