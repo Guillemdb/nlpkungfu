@@ -8,8 +8,8 @@ setup(
     license="MIT",
     author="Guillem Duran Ballester",
     author_email="guillem.db@gmail.com",
-    url="https://github.com/Guillemdb/nlpfungfu",
-    download_url="https://github.com/Guillemdb/nlpfungfu",
+    url="https://github.com/Guillemdb/nlpkungfu",
+    download_url="https://github.com/Guillemdb/nlpkungfu",
     keywords=[
         "nlp",
         "topic modeling",
@@ -18,7 +18,7 @@ setup(
         "tokenizer"
     ],
     install_requires=["spacy", "numpy", "gensim", "nltk",
-                      "torch", "bokeh", "matplotlib"],
+                      "torch", "bokeh", "matplotlib", "pandas"],
     package_data={"": ["LICENSE", "README.md"]},
     classifiers=[
         "Development Status :: 3 - Alpha",
