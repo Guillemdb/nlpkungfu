@@ -1,6 +1,6 @@
 from typing import Callable
 import pandas as pd
-from bokeh.io import push_notebook, show, output_notebook
+from bokeh.io import show
 from bokeh.plotting import figure
 from bokeh.models import ColumnDataSource, LabelSet
 from sklearn.decomposition import NMF, LatentDirichletAllocation, TruncatedSVD

@@ -20,6 +20,9 @@ setup(
         "bokeh",
         "matplotlib",
         "pandas",
+        "sklearn",
+        "tqdm",
+        "pyldavis",
     ],
     package_data={"": ["LICENSE", "README.md"]},
     classifiers=[
