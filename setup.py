@@ -4,7 +4,7 @@ from setuptools import setup
 setup(
     name="nlpkf",
     description="Tools to solve various nlp tasks",
-    version="0.0.1",
+    version="0.0.2",
     license="MIT",
     author="Guillem Duran Ballester",
     author_email="guillem.db@gmail.com",
