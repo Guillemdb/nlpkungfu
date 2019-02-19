@@ -23,6 +23,7 @@ setup(
         "sklearn",
         "tqdm",
         "pyldavis",
+        "umap-learn",
     ],
     package_data={"": ["LICENSE", "README.md"]},
     classifiers=[
