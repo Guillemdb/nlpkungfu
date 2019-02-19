@@ -85,6 +85,7 @@ class WordToVec:
     This class keeps track of the vocabulary, the mapping between words, indexes,
     and the vector representations offered by spacy.
     """
+
     def __init__(
         self,
         model: str = "en_core_web_md",
@@ -212,7 +213,7 @@ class WordToVec:
         self.vectorizer.binary = True
         return self.vectorizer.transform(X)
 
-    def to_freq_counts(self, X: List[str]):
+    def to_freq_counts(self, X: List[str]) -> np.ndarray:
         """
         Transform a given corpus to its word frequency counts representation.
         Args:
@@ -242,7 +243,7 @@ class WordToVec:
             word_seqs.append(np.array(vecs))
         return word_seqs
 
-    def to_seq_vectors(self, X: List[str], clean_text: bool = False):
+    def to_seq_vectors(self, X: List[str], clean_text: bool = False) -> list:
         """
         Transform a corpus to a document vector representation, where each document
         is represented by a dense vector.
