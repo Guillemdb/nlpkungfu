@@ -35,8 +35,8 @@ class NgramModel:
     def __init__(
         self,
         context_size: int,
-        dataproc: Callable = CorpusProcessor,
-        embedding_dim=None,
+        processor: Callable = CorpusProcessor,
+        embedding_size=None,
         load_embedding: bool = True,
         optimizer=None,
         hidden_size: int = 128,
@@ -46,15 +46,15 @@ class NgramModel:
         """
         Args:
             context_size:
-            dataproc:
-            embedding_dim:
+            processor:
+            embedding_size:
             load_embedding:
             optimizer:
             hidden_size:
         """
-        self.dataproc = dataproc(*args, **kwargs)
+        self.dataproc = processor(*args, **kwargs)
         self.vocab_size = self.dataproc.vocab_size
-        self.embedding_dim = embedding_dim if embedding_dim is not None else dataproc.vector_dim
+        self.embedding_dim = embedding_size if embedding_size is not None else processor.vector_dim
         self.load_embedding = load_embedding
         self.context_size = context_size
         self.model = None

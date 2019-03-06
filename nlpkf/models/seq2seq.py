@@ -396,6 +396,8 @@ class Translator(Seq2Seq):
         self.pretrained = pretrained
 
         self.src_proc = processor(*args, **kwargs)
+        if "tokenizer" in kwargs.keys():
+            del kwargs["tokenizer"]
         self.target_proc = processor(tokenizer=self.src_proc.tokenizer, *args, **kwargs)
 
         super(Translator, self).__init__(teacher_forcing_ratio=teacher_forcing_ratio)

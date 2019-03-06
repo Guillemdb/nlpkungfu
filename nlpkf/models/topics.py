@@ -4,6 +4,7 @@ from bokeh.io import show
 from bokeh.plotting import figure
 from bokeh.models import ColumnDataSource, LabelSet
 from sklearn.decomposition import NMF, LatentDirichletAllocation, TruncatedSVD
+from umap import UMAP
 import pyLDAvis
 import pyLDAvis.sklearn
 from nlpkf.preprocessing.corpus import CorpusProcessor
@@ -53,8 +54,8 @@ class TopicAnalizer(CorpusProcessor):
                 ]
             )
 
-    def plot_words(self, vectorized_corpus, height=600, width=600):
-        svd = TruncatedSVD(n_components=2)
+    def plot_words(self, vectorized_corpus, height=600, width=600, *args, **kwargs):
+        svd = UMAP(n_components=2, *args, **kwargs)
         words_2d = svd.fit_transform(vectorized_corpus.T)
 
         df = pd.DataFrame(columns=["x", "y", "word"])
@@ -88,8 +89,8 @@ class TopicAnalizer(CorpusProcessor):
         show(plot, notebook_handle=True)
 
     @staticmethod
-    def plot_documents(vectorized_corpus, width=600, height=600):
-        svd = TruncatedSVD(n_components=2)
+    def plot_documents(vectorized_corpus, width=600, height=600, *args, **kwargs):
+        svd = UMAP(n_components=2, *args, **kwargs)
         documents_2d = svd.fit_transform(vectorized_corpus)
 
         df = pd.DataFrame(columns=["x", "y", "document"])
